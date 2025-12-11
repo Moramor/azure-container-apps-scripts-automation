@@ -30,12 +30,6 @@ This project provides a "drop-in" folder structure where you can add scripts (Py
 
 1.  **Provision Infrastructure**:
     Go to the `terraform/` folder and apply the configuration to create the ACR, Environment, and Identities.
-    
-    ```bash
-    cd terraform
-    terraform init
-    terraform apply
-    ```
 
 2.  **Configure GitLab**:
     Set the required CI/CD variables in GitLab based on the Terraform outputs (ACR Name, Resource Group, Identity ID).
