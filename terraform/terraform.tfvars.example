@@ -1,0 +1,11 @@
+resource_group_name = "rg-automation-framework"
+resource_group_id   = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-automation-framework"
+location            = "West Europe"
+
+acr_name     = "myautomationacr" # Must be globally unique and alphanumeric
+aca_env_name = "aca-env-automation"
+
+# REPLACE THIS with your GitLab Runner's Managed Identity Principal ID
+# This allows the runner to push images to ACR and manage Container Apps
+gitlab_runner_principal_id = "00000000-0000-0000-0000-000000000000"
+
