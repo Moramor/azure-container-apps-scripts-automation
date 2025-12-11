@@ -1,0 +1,68 @@
+stages:
+  - generate-pipeline
+  - deploy
+
+# 1. Generator Job
+# Scans subfolders for 'job.config.yaml' and creates a child pipeline configuration
+generate-child-pipeline:
+  stage: generate-pipeline
+  image: alpine:latest
+  # tags:
+  #   - autoscaler # Uncomment/Configure your runner tag here
+  script:
+    - echo "Generating pipeline config..."
+    - echo "include:" > child-ci.yml
+    - echo "  - local:" >> child-ci.yml
+    - echo "      'automated_jobs_framework/_infra/ci_templates.yml'" >> child-ci.yml
+    - echo "" >> child-ci.yml
+    - echo "stages:" >> child-ci.yml
+    - echo "  - deploy" >> child-ci.yml
+    - echo "" >> child-ci.yml
+    
+    # Find all job.config.yaml files in subdirectories (depth 2 to avoid scanning _infra or root)
+    - |
+      cd automated_jobs_framework
+      echo "Searching for job.config.yaml files..."
+      find . -mindepth 1 -maxdepth 1 -type d ! -name '_*' | while read folder; do
+        folder_name=$(basename "$folder")
+        if [ -f "$folder/job.config.yaml" ]; then
+          echo "Found job config in $folder"
+          
+          # Append job definition to child-ci.yml
+          echo "deploy_$folder_name:" >> ../child-ci.yml
+          echo "  extends: .deploy_aca_job_template" >> ../child-ci.yml
+          echo "  variables:" >> ../child-ci.yml
+          echo "    PROJECT_NAME: \"$folder_name\"" >> ../child-ci.yml
+          echo "    PROJECT_PATH: \"automated_jobs_framework/$folder_name\"" >> ../child-ci.yml
+          echo "" >> ../child-ci.yml
+        fi
+      done
+      cd ..
+      
+      # If no jobs were added (file only has header), create a dummy job
+      if ! grep -q "deploy_" child-ci.yml; then
+        echo "No jobs found. Generating dummy job."
+        echo "dummy-job:" >> child-ci.yml
+        echo "  stage: deploy" >> child-ci.yml
+        echo "  script: echo 'No automation jobs found to deploy.'" >> child-ci.yml
+      fi
+    
+    - echo "Generated pipeline:"
+    - cat child-ci.yml
+  artifacts:
+    paths:
+      - child-ci.yml
+
+# 2. Trigger Job
+trigger-child-pipeline:
+  stage: deploy
+  trigger:
+    include:
+      - artifact: child-ci.yml
+        job: generate-child-pipeline
+    strategy: depend
+  rules:
+    - changes:
+      - automated_jobs_framework/**/*
+  variables:
+    PARENT_PIPELINE_ID: $CI_PIPELINE_ID

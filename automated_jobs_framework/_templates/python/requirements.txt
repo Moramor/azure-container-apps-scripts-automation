@@ -1,0 +1,6 @@
+# Example requirements
+requests==2.31.0
+azure-identity==1.15.0
+pandas==2.2.0
+
+

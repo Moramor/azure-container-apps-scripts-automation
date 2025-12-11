@@ -1,0 +1,25 @@
+.deploy_aca_job_template:
+  image: mcr.microsoft.com/azure-cli
+  stage: deploy
+  # tags:
+  #   - autoscaler # Uncomment/Configure your runner tag here
+  services:
+    - docker:dind
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+  before_script:
+    - az login --identity
+    - az acr login --name $ACR_NAME
+    - sudo apt-get update -qq && sudo apt-get install -y python3-yaml
+  script:
+    - echo "Deploying $PROJECT_NAME..."
+    - cd $PROJECT_PATH
+    
+    # Build Docker Image
+    - IMAGE_TAG="$ACR_LOGIN_SERVER/$PROJECT_NAME:$CI_COMMIT_SHORT_SHA"
+    - docker build -t $IMAGE_TAG .
+    - docker push $IMAGE_TAG
+    
+    # Deploy Job
+    - cd $CI_PROJECT_DIR
+    - python3 automated_jobs_framework/_infra/deploy_job.py --config "$PROJECT_PATH/job.config.yaml" --image "$IMAGE_TAG" --resource-group "$AZURE_RESOURCE_GROUP" --environment "$AZURE_CONTAINER_APP_ENV"
